@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up</title>
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+   body {
+  margin: 0;
+  font-family: 'Urbanist', sans-serif;
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center;     /* Centers vertically */
+  height: 100vh;           /* Full viewport height */
+  background-color: #282A2C;
+  overflow: hidden;        /* Ensures no scrollbars */
+}
+
+.container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.20)), #282A2C;
+  overflow: hidden;
+}
+
+.background-box {
+  position: absolute;
+  width: 1440px;
+  height: 774px;
+  background: #1B1C1D;
+  border-radius: 1px;
+  left: 0;
+  top: 0;
+  z-index: -2;
+}
+
+.background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0; /* Ensures background image stays behind all other content */
+}
+
+.form-box {
+  width: 521px;
+  height: 702px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(32, 34, 35, 0.5);
+  border-radius: 8px;
+  border: 1px solid #313335;
+  backdrop-filter: blur(3.65px);
+}
+
+.logo {
+  width: 100px;
+  height: 105px;
+  position: absolute;
+  left: 50%;
+  top: 156px;
+  transform: translateX(-50%);
+}
+
+.form-content {
+  width: 396px;
+  position: absolute;
+  left: 50%;
+  top: 297px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-group {
+  position: relative;  
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+}
+
+.label {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  
+}
+
+.input-box {
+  height: 40px;
+  background: white;
+  border-radius: 6px;
+  border: 2px solid white;
+  position: relative;
+}
+
+input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 15px;
+  font-family: 'Urbanist', sans-serif;
+  font-size: 13px;
+  color: #333;
+}
+
+.placeholder {
+  display: none; /* Hide placeholders since we're using actual input fields now */
+}
+
+.credit {
+  position: absolute;
+  left: 50%;
+  top: 268px;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.login-text {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.already {
+  color: white;
+}
+
+.login-link {
+  color: #3E6FEA;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.button-section {
+  width: 396px;
+  position: absolute;
+  left: 50%;
+  top: 572px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sign-up-btn {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(131deg, #F13C3C, #4173C5);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-text {
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.or {
+  color: white;
+  font-size: 20px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.google-btn {
+  width: 100%;
+  height: 50px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.google-box {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.google-text {
+  color: black;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.google-icon {
+  width: 25px;
+  height: 25px;
+  z-index: 1;
+  margin-left: 10px;
+}
+
+/* Alert styles from the first file */
+.alert {
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 4px solid;
+  width: 396px;
+  position: absolute;
+  left: 50%;
+  top: 170px;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.alert-success {
+  background-color: rgba(40, 167, 69, 0.2);
+  border-left-color: #28a745;
+  color: #aeffc3;
+}
+
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.2);
+  border-left-color: #dc3545;
+  color: #ffc3c8;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="background-box"></div>
+    <img class="background-image" src="{{ url_for('static', filename='Background.jpg') }}" alt="Background Image"/>
+    <!-- COMMENT: You'll need to provide the background image or replace this with your own -->
+    
+    <div class="form-box"></div>
+    <img class="logo" src="{{ url_for('static', filename='Logo.jpg') }}" alt="Logo"/>
+    <!-- COMMENT: You'll need to provide the logo image or replace this with your own -->
+    
+    <!-- Flash messages from Flask -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('signup') }}" method="post">
+      <div class="form-content">
+        <div class="input-group">
+          <label class="label">Username</label>
+          <div class="input-box">
+            <input type="text" id="username" name="username" placeholder="Enter your username..." required>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="label">Email</label>
+          <div class="input-box">
+            <input type="email" id="email" name="email" placeholder="Enter your email..." required>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="label">Password</label>
+          <div class="input-box">
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="credit">by Utk</div>
+
+      <div class="login-text">
+        <span class="already">Already have an account? </span>
+        <a href="{{ url_for('login') }}" class="login-link">Login</a>
+      </div>
+
+      <div class="button-section">
+        <button type="submit" class="sign-up-btn">
+          <div class="btn-text">Sign Up</div>
+        </button>
+        <div class="or">or</div>
+        <a href="{{ url_for('google_login') }}" class="google-btn">
+          <div class="google-box">
+            <div class="google-text">Continue with Google</div>
+          </div>
+          <img class="Google" src="Google.jpg" alt="Google"/>
+          <!-- COMMENT: You'll need to provide the Google icon image or replace this with your own -->
+        </a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

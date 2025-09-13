@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>DrLaw UI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      height: 100%;
+      width: 100%;
+      font-family: 'Urbanist', sans-serif;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      background-color: #282A2C;
+    }
+
+    .main-panel {
+      position: absolute;
+      top: 0;
+      left: 197px;
+      width: calc(100% - 197px);
+      height: 100%;
+      background-color: #1B1C1D;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .background-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    .background-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .welcome {
+      position: absolute;
+      top: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      text-align: center;
+      z-index: 1;
+    }
+
+    .welcome img {
+      width: 80px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .welcome-text {
+      font-size: 28px;
+      font-weight: 600;
+      background: linear-gradient(90deg, #F13C3C 0%, #4173C5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #conversation-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 800px;
+      margin: 130px auto 100px;
+      padding: 0 20px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-height: calc(100vh - 250px);
+    }
+
+    .input-box {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      max-width: 759px;
+      height: 60px;
+      background: #F6F2F2;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+    }
+
+    #question-input {
+      flex-grow: 1;
+      height: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 0 20px;
+      font-size: 16px;
+      font-family: 'Urbanist', sans-serif;
+      color: #333;
+    }
+
+    #question-input::placeholder {
+      color: #737880;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .send-btn {
+      width: 63px;
+      height: 60px;
+      background: linear-gradient(135deg, #F13C3C 0%, #4173C5 100%);
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+    }
+
+    .send-btn-inner {
+      width: 20px;
+      height: 20px;
+      background: white;
+      clip-path: polygon(0 0, 100% 50%, 0 100%);
+      transform: rotate(-30deg);
+    }
+
+    .lang-btn {
+      height: 35px;
+      position: absolute;
+      top: 43px;
+      right: 30px;
+      background: #202223;
+      border-radius: 6px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 3;
+      cursor: pointer;
+    }
+
+    .lang-btn span {
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+    }
+
+    .lang-btn-arrow img {
+      width: 12px;
+      height: 12px;
+    }
+
+    .language-dropdown {
+      position: absolute;
+      top: 43px;
+      right: 30px;
+      background-color: #202223;
+      border-radius: 6px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      width: 180px;
+      z-index: 10;
+      display: none;
+      padding: 8px 0;
+      margin-top: 38px;
+    }
+
+    .language-dropdown.active {
+      display: block;
+    }
+
+    .language-option {
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      color: white;
+      font-size: 12px;
+    }
+
+    .language-option:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .language-option.active {
+      background-color: rgba(255, 255, 255, 0.2);
+      font-weight: 600;
+    }
+
+    .sidebar-profile {
+      position: absolute;
+      left: 19px;
+      bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 3;
+    }
+
+    .sidebar-profile img {
+      width: 38px;
+      height: 38px;
+      border-radius: 9999px;
+    }
+
+    .profile-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #D9D9D9;
+    }
+
+    .logout-btn {
+      height: 35px;
+      width: 159px;
+      position: absolute;
+      left: 21px;
+      top: 43px;
+      background: #272829;
+      border-radius: 6px;
+      border: 1px solid #454649;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 3;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .logout-btn i {
+      font-size: 15px;
+      color: #D9D9D9;
+    }
+
+    .logout-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: #D9D9D9;
+    }
+
+    .message {
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .user-message {
+      border-left: 4px solid #4173C5;
+      margin-left: 20px;
+    }
+
+    .assistant-message {
+      border-left: 4px solid #F13C3C;
+      margin-right: 20px;
+    }
+
+    .message-header {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .user-message .message-header {
+      color: #4173C5;
+    }
+
+    .assistant-message .message-header {
+      color: #F13C3C;
+    }
+
+    .assistant-content {
+      line-height: 1.6;
+    }
+
+    .assistant-content h1, 
+    .assistant-content h2, 
+    .assistant-content h3 {
+      color: #fff;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+
+    .assistant-content ul,
+    .assistant-content ol {
+      padding-left: 20px;
+    }
+
+    .assistant-content li {
+      margin-bottom: 8px;
+    }
+
+    .assistant-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .assistant-content th,
+    .assistant-content td {
+      border: 1px solid #444;
+      padding: 12px;
+      text-align: left;
+    }
+
+    .assistant-content th {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .fa-circle-notch {
+      margin-right: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .main-panel {
+        left: 0;
+        width: 100%;
+      }
+      .input-box {
+        width: 90%;
+      }
+      .lang-btn {
+        right: 10px;
+      }
+      .logout-btn {
+        left: 10px;
+      }
+      .sidebar-profile {
+        display: none;
+      }
+      #conversation-container {
+        margin-top: 100px;
+      }
+    }
+
+    /* Background pattern for consistency when image is missing */
+    .pattern-bg {
+      background-color: #1B1C1D;
+      background-image: 
+        radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.05) 2px, transparent 0),
+        radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.05) 2px, transparent 0);
+      background-size: 100px 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-panel">
+      <div class="background-img pattern-bg">
+        <img class="background" src="{{ url_for('static', filename='Background.jpg') }}" alt="Background Image"/>
+      </div>
+      <div class="welcome">
+        <img class="logo" src="{{ url_for('static', filename='Logo.jpg') }}" alt="Logo"/>
+        <div class="welcome-text">DrLAW</div>
+      </div>
+      
+      <div id="conversation-container">
+        <div class="message assistant-message">
+          <p class="message-header">DrLAW:</p>
+          <div class="assistant-content">
+            <p>Welcome to DrLAW! I'm your legal AI advisor. How can I help you with your legal questions today?</p>
+          </div>
+        </div>
+      </div>
+      
+      <form id="ask-form">
+        <div class="input-box">
+          <input type="text" id="question-input" placeholder="Enter your legal question here">
+          <button type="submit" class="send-btn">
+            <div class="send-btn-inner"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="lang-btn" id="language-toggle">
+      <span>English</span>
+      <div class="lang-btn-arrow">
+        <i class="fas fa-chevron-down" style="color: white; font-size: 12px;"></i>
+      </div>
+    </div>
+    
+    <div class="language-dropdown" id="language-dropdown">
+      <div class="language-option active" data-lang="en">English</div>
+      <div class="language-option" data-lang="hi">Hindi</div>
+      <div class="language-option" data-lang="bn">Bengali</div>
+      <div class="language-option" data-lang="te">Telugu</div>
+      <div class="language-option" data-lang="mr">Marathi</div>
+      <div class="language-option" data-lang="ta">Tamil</div>
+      <div class="language-option" data-lang="gu">Gujarati</div>
+      <div class="language-option" data-lang="kn">Kannada</div>
+      <div class="language-option" data-lang="ml">Malayalam</div>
+      <div class="language-option" data-lang="pa">Punjabi</div>
+      <div class="language-option" data-lang="or">Odia</div>
+    </div>
+
+    <div class="sidebar-profile">
+      <img src="utkprofile.jpg" alt="Profile" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2238%22 height=%2238%22 viewBox=%220 0 38 38%22><circle cx=%2219%22 cy=%2219%22 r=%2219%22 fill=%22%23404040%22 /><circle cx=%2219%22 cy=%2216%22 r=%227%22 fill=%22%23d9d9d9%22 /><path d=%22M6,34 C6,25 32,25 32,34%22 fill=%22%23d9d9d9%22 /></svg>';">
+      <div class="profile-name">{{ session.username }}</div>
+    </div>
+
+    <a href="{{ url_for('logout') }}" class="logout-btn">
+      <i class="fas fa-sign-out-alt"></i>
+      <div class="logout-text">Logout</div>
+    </a>
+  </div>
+
+  <script>
+    const askForm = document.getElementById('ask-form');
+    const questionInput = document.getElementById('question-input');
+    const conversationContainer = document.getElementById('conversation-container');
+    const languageToggle = document.getElementById('language-toggle');
+    const languageDropdown = document.getElementById('language-dropdown');
+    const languageOptions = document.querySelectorAll('.language-option');
+    
+    let currentLanguage = 'en';
+    let conversationHistory = [];
+
+    // Initialize with proper image paths
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check for drop-down arrow image
+      const langBtnArrow = document.querySelector('.lang-btn-arrow img');
+      if (langBtnArrow) {
+        langBtnArrow.onerror = function() {
+          this.style.display = 'none';
+          document.querySelector('.lang-btn-arrow').innerHTML = '<i class="fas fa-chevron-down" style="color: white; font-size: 12px;"></i>';
+        };
+      }
+    });
+
+    // Toggle language dropdown
+    languageToggle.addEventListener('click', () => {
+      languageDropdown.classList.toggle('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.lang-btn') && !event.target.closest('.language-dropdown')) {
+        languageDropdown.classList.remove('active');
+      }
+    });
+
+    // Handle language selection
+    languageOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const selectedLang = option.getAttribute('data-lang');
+        currentLanguage = selectedLang;
+        
+        // Update UI
+        languageOptions.forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+        
+        // Update button text
+        document.querySelector('.lang-btn span').textContent = option.textContent;
+        
+        // Close dropdown
+        languageDropdown.classList.remove('active');
+      });
+    });
+
+    // Function to add message to conversation UI
+    function addMessageToUI(content, isUser = false) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = isUser ? 'message user-message' : 'message assistant-message';
+      
+      const headerP = document.createElement('p');
+      headerP.className = 'message-header';
+      headerP.textContent = isUser ? 'You:' : 'DrLAW:';
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.className = isUser ? '' : 'assistant-content';
+      contentDiv.innerHTML = content; // Using innerHTML to preserve any HTML formatting
+      
+      messageDiv.appendChild(headerP);
+      messageDiv.appendChild(contentDiv);
+      
+      conversationContainer.appendChild(messageDiv);
+      
+      // Scroll to bottom of conversation
+      conversationContainer.scrollTop = conversationContainer.scrollHeight;
+    }
+
+    // Load chat history from server
+    async function loadChatHistory() {
+      try {
+        const response = await fetch('/chat/history');
+        const history = await response.json();
+        
+        if (history && history.length > 0) {
+          // Clear the initial welcome message
+          conversationContainer.innerHTML = '';
+          
+          // Add all messages from history
+          history.forEach(item => {
+            addMessageToUI(item.question, true);
+            addMessageToUI(item.answer, false);
+            conversationHistory.push({ role: 'user', content: item.question });
+            conversationHistory.push({ role: 'assistant', content: item.answer });
+          });
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      }
+    }
+
+    // Initialize conversation history from server
+    window.addEventListener('DOMContentLoaded', loadChatHistory);
+
+    askForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const question = questionInput.value.trim();
+      if (!question) return;
+      
+      // Add user question to UI
+      addMessageToUI(question, true);
+      
+      // Clear input field
+      questionInput.value = '';
+      
+      // Add loading indicator
+      const loadingMessage = document.createElement('div');
+      loadingMessage.className = 'message assistant-message';
+      loadingMessage.innerHTML = '<p class="message-header">DrLAW:</p><div class="assistant-content"><p><i class="fas fa-circle-notch fa-spin"></i> Analyzing your legal question...</p></div>';
+      conversationContainer.appendChild(loadingMessage);
+      conversationContainer.scrollTop = conversationContainer.scrollHeight;
+      
+      try {
+        const response = await fetch('/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            question: question,
+            language: currentLanguage,
+            conversation_history: conversationHistory
+          }),
+        });
+        
+        const data = await response.json();
+        
+        // Remove loading indicator
+        conversationContainer.removeChild(loadingMessage);
+        
+        if (data.error) {
+          addMessageToUI(`<p>Error: ${data.error}</p>`, false);
+        } else {
+          // Add assistant response to UI
+          addMessageToUI(data.answer, false);
+          
+          // Update conversation history
+          conversationHistory.push({ role: 'user', content: question });
+          conversationHistory.push({ role: 'assistant', content: data.answer });
+        }
+      } catch (error) {
+        // Remove loading indicator
+        conversationContainer.removeChild(loadingMessage);
+        
+        addMessageToUI(`<p>Error: Unable to get a response. Please try again later.</p>`, false);
+        console.error('Error:', error);
+      }
+    });
+  </script>
+</body>
+</html>
