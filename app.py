@@ -476,9 +476,9 @@ def chat_history():
     history = get_chat_history(session['user_id'])
     return jsonify([dict(row) for row in history])
 
-# Initialize RAG system on first request
-@app.before_first_request
-def initialize_app():
+
+# Initialize RAG system on app startup
+with app.app_context():
     initialize_rag_system()
 
 # fix main guard
@@ -488,4 +488,3 @@ if __name__ == '__main__':
 
 
 
-    
