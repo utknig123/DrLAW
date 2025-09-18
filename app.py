@@ -15,8 +15,8 @@ import faiss
 import google.generativeai as genai
 import nltk.data
 import time
-import requests  # CHANGED: Added requests for direct API calls
-import urllib.parse  # CHANGED: Added for URL encoding
+import requests
+import urllib.parse
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from supabase import create_client, Client
@@ -30,14 +30,13 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 CORS(app)
 
-# CHANGED: Supabase Configuration (replace with your actual values)
+# Supabase Configuration
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 # Get frontend URL from environment variables or use localhost for development
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
-
 
 # Initialize OAuth
 oauth = OAuth(app)
@@ -51,55 +50,33 @@ google = oauth.register(
     authorize_params=None,
     api_base_url='https://www.googleapis.com/oauth2/v1/',
     client_kwargs={'scope': 'openid email profile',
-                    
-                    # ADD THIS to REDIRECT_URI CONFIGURATION
-                   'redirect_uri': f"{FRONTEND_URL}/login/google/authorize"
-
-                   },
-
+                   'redirect_uri': f"{FRONTEND_URL}/login/google/authorize"},
 )
 
 # Initialize the RAG system
 API_KEY = "AIzaSyDt6dT2xd1xwMwEOnrwU37Ldks6MvUGWU0"
 
-# CHANGED: Replace googletrans with custom translation function
+# Translation function using direct API calls
 def translate_text(text, dest_language='hi', src_language='en'):
-    """
-    Simple translation function using Google Translate API directly
-    """
+    """Simple translation function using Google Translate API directly"""
     try:
-        # URL encode the text
         encoded_text = urllib.parse.quote(text)
-        
-        # Google Translate API endpoint (same one googletrans uses internally)
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src_language}&tl={dest_language}&dt=t&q={encoded_text}"
         
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            # Parse the JSON response
             translation_data = response.json()
             if translation_data and len(translation_data) > 0:
-                translated_text = translation_data[0][0][0]
-                return translated_text
-        
-        return text  # Return original text if translation fails
+                return translation_data[0][0][0]
+        return text
     except Exception as e:
         print(f"Translation error: {e}")
-        return text  # Return original text on any error
+        return text
 
 # Language codes and their names
 LANGUAGES = {
-    'en': 'English',
-    'hi': 'Hindi',
-    'bn': 'Bengali',
-    'te': 'Telugu',
-    'mr': 'Marathi',
-    'ta': 'Tamil',
-    'gu': 'Gujarati',
-    'kn': 'Kannada',
-    'ml': 'Malayalam',
-    'pa': 'Punjabi',
-    'or': 'Odia'
+    'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'te': 'Telugu', 'mr': 'Marathi',
+    'ta': 'Tamil', 'gu': 'Gujarati', 'kn': 'Kannada', 'ml': 'Malayalam', 'pa': 'Punjabi', 'or': 'Odia'
 }
 
 class PDFProcessor:
@@ -109,25 +86,18 @@ class PDFProcessor:
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
-                # handle pages where extract_text() may return None
                 page_text = page.extract_text() or ""
                 text += page_text + "\n"
         return text
 
 class TextChunker:
     """Splits text into chunks"""
-    def __init__(self, chunk_size: int = 1000):
+    def __init__(self, chunk_size: int = 500):  # Reduced chunk size for memory
         self.chunk_size = chunk_size
         try:
             nltk.data.find('tokenizers/punkt')
         except LookupError:
             nltk.download('punkt', quiet=True)
-        except Exception as e:
-            print(f"Error initializing NLTK: {e}")
-            nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
-            os.makedirs(nltk_data_dir, exist_ok=True)
-            nltk.data.path.append(nltk_data_dir)
-            nltk.download('punkt', download_dir=nltk_data_dir, quiet=True)
     
     def chunk_text(self, text: str) -> list:
         sentences = nltk.sent_tokenize(text)
@@ -144,27 +114,55 @@ class TextChunker:
         return chunks
 
 class RAGSystem:
-    
-    """RAG system with simplified components"""
+    """RAG system with memory optimization"""
     def __init__(self, api_key: str = None):
-        # allow optional API key, fallback to module-level API_KEY
         if api_key is None:
             api_key = API_KEY
-        self.pdf_processor = PDFProcessor()
-        self.chunker = TextChunker()
-        self.embedding_model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
-        # use correct __file__ builtin
+        
+        # Lazy loading components
+        self.pdf_processor = None
+        self.chunker = None
+        self.embedding_model = None
+        self.llm = None
+        self.index = None
+        self.chunks = []
+        self.is_trained = False
+        
+        # Storage setup
         self.storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage")
         os.makedirs(self.storage_dir, exist_ok=True)
         self.index_path = os.path.join(self.storage_dir, "faiss_index.bin")
         self.metadata_path = os.path.join(self.storage_dir, "chunks_metadata.json")
+        
+        # Load or create index
         self.load_or_create_index()
+        
+        # Initialize API key only
         try:
             genai.configure(api_key=api_key)
-            self.llm = genai.GenerativeModel('gemini-2.0-flash')
         except Exception as e:
             print(f"Warning: genai init failed: {e}")
-            self.llm = None
+    
+    def load_pdf_processor(self):
+        """Lazy load PDF processor"""
+        if self.pdf_processor is None:
+            self.pdf_processor = PDFProcessor()
+    
+    def load_chunker(self):
+        """Lazy load chunker"""
+        if self.chunker is None:
+            self.chunker = TextChunker()
+    
+    def load_embedding_model(self):
+        """Lazy load embedding model - memory intensive"""
+        if self.embedding_model is None:
+            print("Loading sentence transformer model...")
+            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')  # Smaller model
+    
+    def load_llm(self):
+        """Lazy load LLM"""
+        if self.llm is None:
+            self.llm = genai.GenerativeModel('gemini-2.0-flash')
     
     def load_or_create_index(self):
         """Load existing index and chunks or create new ones"""
@@ -173,16 +171,20 @@ class RAGSystem:
                 self.index = faiss.read_index(self.index_path)
                 with open(self.metadata_path, 'r') as f:
                     self.chunks = json.load(f)
-                print(f"Loaded existing index with {self.index.ntotal} vectors and {len(self.chunks)} chunks")
+                print(f"Loaded existing index with {self.index.ntotal} vectors")
             else:
+                # Create efficient index type
                 dimension = 384
-                self.index = faiss.IndexFlatL2(dimension)
+                nlist = 50  # Reduced clusters for memory
+                quantizer = faiss.IndexFlatL2(dimension)
+                self.index = faiss.IndexIVFFlat(quantizer, dimension, nlist)
                 self.chunks = []
-                print("Created new FAISS index")
+                print("Created new efficient FAISS index")
         except Exception as e:
             print(f"Error loading index: {e}. Creating new one.")
             dimension = 384
-            self.index = faiss.IndexFlatL2(dimension)
+            quantizer = faiss.IndexFlatL2(dimension)
+            self.index = faiss.IndexIVFFlat(quantizer, dimension, 50)
             self.chunks = []
     
     def save_index_and_chunks(self):
@@ -191,116 +193,128 @@ class RAGSystem:
             faiss.write_index(self.index, self.index_path)
             with open(self.metadata_path, 'w') as f:
                 json.dump(self.chunks, f)
-            print(f"Saved index with {self.index.ntotal} vectors and {len(self.chunks)} chunks")
         except Exception as e:
             print(f"Error saving index: {e}")
     
     def process_pdf(self, pdf_path: str) -> str:
-        """Process PDF and store chunks"""
+        """Process PDF and store chunks with memory optimization"""
         try:
+            self.load_pdf_processor()
+            self.load_chunker()
+            self.load_embedding_model()
+            
             pdf_name = os.path.basename(pdf_path)
-            if self.chunks and any(pdf_name in chunk.get('source', '') for chunk in self.chunks):
-                return f"PDF {pdf_name} was already processed. Using existing chunks."
+            if any(pdf_name in chunk.get('source', '') for chunk in self.chunks):
+                return f"PDF {pdf_name} was already processed."
+            
+            # Process in smaller batches
             text = self.pdf_processor.extract_text(pdf_path)
             new_chunks = self.chunker.chunk_text(text)
-            embeddings = self.embedding_model.encode(new_chunks)
-            self.index.add(embeddings.astype(np.float32))
-            chunk_metadata = [{'text': chunk, 'source': pdf_name} for chunk in new_chunks]
-            self.chunks.extend(chunk_metadata)
+            
+            # Process chunks in batches to reduce memory peaks
+            batch_size = 5
+            for i in range(0, len(new_chunks), batch_size):
+                batch_chunks = new_chunks[i:i+batch_size]
+                embeddings = self.embedding_model.encode(batch_chunks)
+                
+                # Train index if needed
+                if not self.is_trained and len(embeddings) >= 50:
+                    self.index.train(embeddings.astype(np.float32))
+                    self.is_trained = True
+                
+                # Add to index if trained
+                if self.is_trained:
+                    self.index.add(embeddings.astype(np.float32))
+                
+                # Add metadata
+                chunk_metadata = [{'text': chunk, 'source': pdf_name} for chunk in batch_chunks]
+                self.chunks.extend(chunk_metadata)
+            
             self.save_index_and_chunks()
-            return f"Successfully processed {len(new_chunks)} chunks from PDF"
+            return f"Successfully processed {len(new_chunks)} chunks from {pdf_name}"
+            
         except Exception as e:
             return f"Error processing PDF: {str(e)}"
     
     def query(self, question: str, conversation_history=None, language='en', top_k: int = 3) -> str:
         """Query the system with conversation history and language support"""
         try:
+            self.load_embedding_model()
+            self.load_llm()
+            
             # Get relevant chunks
             query_embedding = self.embedding_model.encode([question])
             scores, indices = self.index.search(query_embedding.astype(np.float32), top_k)
             
             # Get context from relevant chunks
-            context = " ".join([self.chunks[i]['text'] for i in indices[0]])
+            context = " ".join([self.chunks[i]['text'] for i in indices[0] if i < len(self.chunks)])
             
-            # Format conversation history for Gemini prompt
+            # Format conversation history
             conversation_context = ""
-            if conversation_history and len(conversation_history) > 0:
+            if conversation_history:
                 conversation_context = "Previous conversation:\n"
                 for message in conversation_history:
                     role = "User" if message.get('role') == 'user' else "DrLAW"
                     conversation_context += f"{role}: {message.get('content')}\n"
             
-            # Check which language the user is using
-            output_language = LANGUAGES.get(language, 'English')
-            
             # Generate answer using Gemini
-            prompt = f"""
-            You are DrLAW, a legal AI advisor. Your task is to provide detailed legal advice based on the following context:
-            
-            CONTEXT FROM LEGAL DOCUMENTS:
-            {context}
-            
-            {conversation_context}
-            
-            Current Question: {question}
+            output_language = LANGUAGES.get(language, 'English')
+            prompt = f"""You are DrLAW, a legal AI advisor. Your task is to provide detailed legal advice based on the following context:
 
-            Format your response in a clean, organized way with clear sections. Use HTML formatting for better presentation.
-            
-            Your response should include:
-            
-            1. A brief greeting and introduction
-            2. A clear, concise answer to the question (200-300 words)
-            3. A detailed explanation with the following sections in HTML table format:
-               - "Legal Roadmap" - Step-by-step guidance
-               - "Required Documentation" - List of necessary documents
-               - "Applicable Laws" - Relevant legal sections in tabular format
-            4. A brief conclusion
-            
-            Use HTML tags to format your response, especially tables for structured information.
-            
-            The response should be in {output_language}.
-            """
-            
-            # Generate the response
+CONTEXT FROM LEGAL DOCUMENTS:
+{context}
+
+{conversation_context}
+
+Current Question: {question}
+
+Format your response with clear sections. Use HTML formatting. Include:
+1. Brief greeting and introduction
+2. Clear, concise answer (200-300 words)
+3. Detailed explanation with HTML tables for:
+   - Legal Roadmap
+   - Required Documentation  
+   - Applicable Laws
+4. Brief conclusion
+
+Response should be in {output_language}."""
+
             response = self.llm.generate_content(prompt)
             answer_text = response.text
             
-            # CHANGED: Use direct API call instead of googletrans
+            # Translate if needed
             if language != 'en':
-                try:
-                    answer_text = translate_text(answer_text, language, 'en')
-                except Exception as e:
-                    print(f"Translation error: {e}")
-                    # Fall back to English if translation fails
+                answer_text = translate_text(answer_text, language, 'en')
             
             return answer_text
         except Exception as e:
             return f"Error generating answer: {str(e)}"
 
-# Initialize RAG system
+# Initialize RAG system with lazy loading
 rag = RAGSystem()
 
-# Process multiple PDFs
-script_dir = os.path.dirname(os.path.abspath(__file__))
-pdf_files = ["constitution.pdf", "1.pdf", "2.pdf","3.pdf",
-                "4.pdf","5.pdf","6.pdf","7.pdf","8.pdf","9.pdf","10.pdf","11.pdf",
-                "12.pdf","13.pdf","14.pdf","15.pdf","16.pdf","17.pdf","18.pdf","19.pdf","20.pdf",
-                "21.pdf","22.pdf","23.pdf","24.pdf","25.pdf","26.pdf","27.pdf","28.pdf","29.pdf","30.pdf"] 
+# Process PDFs with memory awareness
+def initialize_rag_system():
+    """Initialize RAG system gradually to avoid memory peaks"""
+    print("Initializing RAG system...")
+    
+    pdf_files = ["constitution.pdf", "1.pdf", "2.pdf","3.pdf","4.pdf","5.pdf","6.pdf",
+                 "7.pdf","8.pdf","9.pdf","10.pdf","11.pdf","12.pdf","13.pdf","14.pdf",
+                 "15.pdf","16.pdf","17.pdf","18.pdf","19.pdf","20.pdf","21.pdf","22.pdf",
+                 "23.pdf","24.pdf","25.pdf","26.pdf","27.pdf","28.pdf","29.pdf","30.pdf"]
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    for pdf_file in pdf_files:
+        pdf_path = os.path.join(script_dir, pdf_file)
+        if os.path.exists(pdf_path):
+            print(f"Processing {pdf_file}...")
+            result = rag.process_pdf(pdf_path)
+            print(result)
+        else:
+            print(f"PDF not found: {pdf_file}")
 
-for pdf_file in pdf_files:
-    pdf_path = os.path.join(script_dir, pdf_file)
-    if not os.path.exists(pdf_path):
-        print(f"Error: PDF file not found at: {pdf_path}")
-        continue
-    print(f"Processing PDF from: {pdf_path}")
-    result = rag.process_pdf(pdf_path)
-    print(result)
-
-# Ensure the templates directory exists
-templates_dir = os.path.join(script_dir, "templates")
-os.makedirs(templates_dir, exist_ok=True)
-
-# Database helper functions for Supabase
+# Database helper functions
 def get_user_by_email(email):
     try:
         response = supabase.table("users").select("*").eq("email", email).execute()
@@ -311,11 +325,7 @@ def get_user_by_email(email):
 
 def create_user(username, email, password_hash=None, google_id=None):
     try:
-        user_data = {
-            "username": username,
-            "email": email
-        }
-        
+        user_data = {"username": username, "email": email}
         if password_hash:
             user_data["password_hash"] = password_hash
         if google_id:
@@ -329,11 +339,7 @@ def create_user(username, email, password_hash=None, google_id=None):
 
 def save_chat(user_id, question, answer):
     try:
-        chat_data = {
-            "user_id": user_id,
-            "question": question,
-            "answer": answer
-        }
+        chat_data = {"user_id": user_id, "question": question, "answer": answer}
         supabase.table("chats").insert(chat_data).execute()
     except Exception as e:
         print(f"Error saving chat: {e}")
@@ -360,12 +366,12 @@ def login_required(f):
 def index():
     if 'user_id' in session:
         return render_template('index.html')
-    return render_template('front.html')  # Show front.html for non-logged in users
+    return render_template('front.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
-        return redirect(url_for('index'))  # Already logged in users go to index
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         email = request.form.get('email')
@@ -380,12 +386,12 @@ def login():
         else:
             flash('Invalid email or password', 'danger')
     
-    return render_template('login.html')  # Show login form for GET requests
+    return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if 'user_id' in session:
-        return redirect(url_for('index'))  # Already logged in users go to index
+        return redirect(url_for('index'))
         
     if request.method == 'POST':
         username = request.form.get('username')
@@ -406,7 +412,7 @@ def signup():
         except Exception as e:
             flash('Error creating account', 'danger')
     
-    return render_template('front.html')  # Show signup form (front.html)
+    return render_template('front.html')
 
 @app.route('/login/google')
 def google_login():
@@ -419,26 +425,18 @@ def google_authorize():
         token = google.authorize_access_token()
         user_info = google.get('userinfo').json()
         
-        # Check if user exists by google_id
         response = supabase.table("users").select("*").eq("google_id", user_info['id']).execute()
         user = response.data[0] if response.data else None
         
         if not user:
-            # Check if email exists (in case user signed up with email first)
             response = supabase.table("users").select("*").eq("email", user_info['email']).execute()
             user = response.data[0] if response.data else None
             
             if user:
-                # Update existing user with google_id
                 supabase.table("users").update({"google_id": user_info['id']}).eq("user_id", user['user_id']).execute()
             else:
-                # Create new user
                 username = user_info.get('name', user_info['email'].split('@')[0])
-                user_id = create_user(
-                    username=username,
-                    email=user_info['email'],
-                    google_id=user_info['id']
-                )
+                user_id = create_user(username=username, email=user_info['email'], google_id=user_info['id'])
                 user = {'user_id': user_id, 'username': username}
         
         session['user_id'] = user['user_id']
@@ -467,17 +465,10 @@ def ask():
     if not question:
         return jsonify({'error': 'No question provided'}), 400
     
-    # Pass conversation history and language to the RAG system
     answer = rag.query(question, conversation_history, language)
-    
-    # Save the chat to database
     save_chat(session['user_id'], question, answer)
     
-    return jsonify({
-        'question': question,
-        'answer': answer,
-        'language': language
-    })
+    return jsonify({'question': question, 'answer': answer, 'language': language})
 
 @app.route('/chat/history')
 @login_required
@@ -485,6 +476,16 @@ def chat_history():
     history = get_chat_history(session['user_id'])
     return jsonify([dict(row) for row in history])
 
+# Initialize RAG system on first request
+@app.before_first_request
+def initialize_app():
+    initialize_rag_system()
+
 # fix main guard
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)  # debug=False for production
+
+
+
+    
