@@ -58,20 +58,28 @@ API_KEY = "AIzaSyDt6dT2xd1xwMwEOnrwU37Ldks6MvUGWU0"
 
 # Translation function using direct API calls
 def translate_text(text, dest_language='hi', src_language='en'):
-    """Simple translation function using Google Translate API directly"""
+    """
+    Simple translation function using Google Translate API directly
+    """
     try:
+        # URL encode the text
         encoded_text = urllib.parse.quote(text)
+        
+        # Google Translate API endpoint
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src_language}&tl={dest_language}&dt=t&q={encoded_text}"
         
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
+            # Parse the JSON response
             translation_data = response.json()
             if translation_data and len(translation_data) > 0:
-                return translation_data[0][0][0]
-        return text
+                translated_text = translation_data[0][0][0]
+                return translated_text
+        
+        return text  # Return original text if translation fails
     except Exception as e:
         print(f"Translation error: {e}")
-        return text
+        return text  # Return original text on any error
 
 # Language codes and their names
 LANGUAGES = {
@@ -86,6 +94,7 @@ class PDFProcessor:
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
+                # handle pages where extract_text() may return None
                 page_text = page.extract_text() or ""
                 text += page_text + "\n"
         return text
@@ -115,7 +124,7 @@ class TextChunker:
 
 class RAGSystem:
     """RAG system with memory optimization"""
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, supabase_client=None):
         if api_key is None:
             api_key = API_KEY
         
@@ -127,6 +136,8 @@ class RAGSystem:
         self.index = None
         self.chunks = []
         self.is_trained = False
+        self.supabase = supabase_client
+        self.pdf_bucket = "legal_pdfs"
         
         # Storage setup
         self.storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage")
@@ -196,19 +207,28 @@ class RAGSystem:
         except Exception as e:
             print(f"Error saving index: {e}")
     
-    def process_pdf(self, pdf_path: str) -> str:
-        """Process PDF and store chunks with memory optimization"""
+    def download_and_process_pdf(self, pdf_name: str) -> str:
+        """Download PDF from Supabase and process it with memory optimization"""
         try:
             self.load_pdf_processor()
             self.load_chunker()
             self.load_embedding_model()
             
-            pdf_name = os.path.basename(pdf_path)
+            # Check if already processed
             if any(pdf_name in chunk.get('source', '') for chunk in self.chunks):
                 return f"PDF {pdf_name} was already processed."
             
-            # Process in smaller batches
-            text = self.pdf_processor.extract_text(pdf_path)
+            # Download PDF from Supabase
+            print(f"Downloading {pdf_name} from Supabase...")
+            pdf_data = self.supabase.storage.from_(self.pdf_bucket).download(pdf_name)
+            
+            # Save to temporary file
+            temp_path = os.path.join(self.storage_dir, pdf_name)
+            with open(temp_path, 'wb') as f:
+                f.write(pdf_data)
+            
+            # Process the PDF
+            text = self.pdf_processor.extract_text(temp_path)
             new_chunks = self.chunker.chunk_text(text)
             
             # Process chunks in batches to reduce memory peaks
@@ -231,10 +251,18 @@ class RAGSystem:
                 self.chunks.extend(chunk_metadata)
             
             self.save_index_and_chunks()
+            
+            # Clean up temporary file
+            os.remove(temp_path)
+            
             return f"Successfully processed {len(new_chunks)} chunks from {pdf_name}"
             
         except Exception as e:
-            return f"Error processing PDF: {str(e)}"
+            # Clean up if temp file was created
+            temp_path = os.path.join(self.storage_dir, pdf_name)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return f"Error processing PDF from Supabase: {str(e)}"
     
     def query(self, question: str, conversation_history=None, language='en', top_k: int = 3) -> str:
         """Query the system with conversation history and language support"""
@@ -290,10 +318,10 @@ Response should be in {output_language}."""
         except Exception as e:
             return f"Error generating answer: {str(e)}"
 
-# Initialize RAG system with lazy loading
-rag = RAGSystem()
+# Initialize RAG system with Supabase client
+rag = RAGSystem(api_key=API_KEY, supabase_client=supabase)
 
-# Process PDFs with memory awareness
+# Process PDFs from Supabase storage
 def initialize_rag_system():
     """Initialize RAG system gradually to avoid memory peaks"""
     print("Initializing RAG system...")
@@ -303,16 +331,10 @@ def initialize_rag_system():
                  "15.pdf","16.pdf","17.pdf","18.pdf","19.pdf","20.pdf","21.pdf","22.pdf",
                  "23.pdf","24.pdf","25.pdf","26.pdf","27.pdf","28.pdf","29.pdf","30.pdf"]
     
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    
     for pdf_file in pdf_files:
-        pdf_path = os.path.join(script_dir, pdf_file)
-        if os.path.exists(pdf_path):
-            print(f"Processing {pdf_file}...")
-            result = rag.process_pdf(pdf_path)
-            print(result)
-        else:
-            print(f"PDF not found: {pdf_file}")
+        print(f"Processing {pdf_file}...")
+        result = rag.download_and_process_pdf(pdf_file)
+        print(result)
 
 # Database helper functions
 def get_user_by_email(email):
@@ -476,7 +498,6 @@ def chat_history():
     history = get_chat_history(session['user_id'])
     return jsonify([dict(row) for row in history])
 
-
 # Initialize RAG system on app startup
 with app.app_context():
     initialize_rag_system()
@@ -484,7 +505,8 @@ with app.app_context():
 # fix main guard
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)  # debug=False for production
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 
 
+    
